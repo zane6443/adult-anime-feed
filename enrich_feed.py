@@ -10,7 +10,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-UA = "Mozilla/5.0 (compatible; adult-anime-feed/4.1; +https://github.com/zane6443/adult-anime-feed)"
+UA = "Mozilla/5.0 (compatible; adult-anime-feed/5.0; +https://github.com/zane6443/adult-anime-feed)"
 NOW = datetime.now(timezone.utc)
 YEAR = NOW.year
 META_URL = "https://upcominghentai.com/"
@@ -36,7 +36,7 @@ def bad_image(url: str | None) -> bool:
 
 
 def guid_for(title: str, link: str, date: datetime) -> str:
-    return hashlib.sha256(f"v4|{date.date()}|{title}|{link}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"v5|{date.date()}|{title}|{link}".encode("utf-8")).hexdigest()
 
 
 def parse_date(text: str) -> datetime | None:
@@ -158,21 +158,21 @@ def main():
 
     title = channel.find("title")
     if title is not None:
-        title.text = f"Adult Anime Release Watch {YEAR} v4"
+        title.text = f"Adult Anime Release Watch {YEAR} v5"
 
     added_pp = add_pink_pineapple_metadata(channel)
     removed_bad, stripped = cleanup(channel)
     data = ET.tostring(root, encoding="utf-8", xml_declaration=True)
-    for fn in ("feed.xml", "feed-v2.xml", "feed-v3.xml", "feed-v4.xml"):
+    for fn in ("feed.xml", "feed-v2.xml", "feed-v3.xml", "feed-v4.xml", "feed-v5.xml"):
         with open(fn, "wb") as f:
             f.write(data)
 
     with open("status.txt", "a", encoding="utf-8") as f:
-        f.write("\nV4 cleanup:\n")
+        f.write("\nV5 cleanup:\n")
         f.write(f"- Pink Pineapple metadata items added: {added_pp}\n")
         f.write(f"- Error-page entries removed: {removed_bad}\n")
         f.write(f"- Known placeholder images stripped: {stripped}\n")
-        f.write(f"- Final v4 items: {len(channel.findall('item'))}\n")
+        f.write(f"- Final v5 items: {len(channel.findall('item'))}\n")
 
 
 if __name__ == "__main__":
