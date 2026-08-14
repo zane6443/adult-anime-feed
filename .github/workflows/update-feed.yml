@@ -26,6 +26,9 @@ jobs:
       - name: Generate feed
         run: python generate_feed.py
 
+      - name: Enrich and clean feed
+        run: python enrich_feed.py
+
       - name: Commit updated feed
         run: |
           git config user.name "github-actions[bot]"
