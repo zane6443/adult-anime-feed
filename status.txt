@@ -1,4 +1,4 @@
-Updated: 2026-08-14T23:32:40.208684+00:00
+Updated: 2026-08-14T23:39:54.034503+00:00
 Year: 2026
 Items: 28
 Items with images: 28
@@ -10,15 +10,15 @@ Items by source:
 - Lune Soft / News: 10
 
 Source errors:
-- MediaBank Queen Bee: ConnectTimeout: HTTPSConnectionPool(host='www.mediabank.co.jp', port=443): Max retries exceeded with url: /label.php?id=22&pg=1&stat=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.mediabank.co.jp', port=443) at 0x7f9ede2c22d0>, 'Connection to www.mediabank.co.jp timed out. (connect timeout=25)'))
-- MediaBank Gold Bear: ConnectTimeout: HTTPSConnectionPool(host='www.mediabank.co.jp', port=443): Max retries exceeded with url: /label.php?id=14&pg=1&stat=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.mediabank.co.jp', port=443) at 0x7f9ede215400>, 'Connection to www.mediabank.co.jp timed out. (connect timeout=25)'))
-- MediaBank White Bear: ConnectTimeout: HTTPSConnectionPool(host='www.mediabank.co.jp', port=443): Max retries exceeded with url: /label.php?id=9&pg=1&stat=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.mediabank.co.jp', port=443) at 0x7f9ede215c40>, 'Connection to www.mediabank.co.jp timed out. (connect timeout=25)'))
-- MediaBank Hot Bear: ConnectTimeout: HTTPSConnectionPool(host='www.mediabank.co.jp', port=443): Max retries exceeded with url: /label.php?id=8&pg=1&stat=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.mediabank.co.jp', port=443) at 0x7f9ede2167b0>, 'Connection to www.mediabank.co.jp timed out. (connect timeout=25)'))
-- MediaBank King Bee: ConnectTimeout: HTTPSConnectionPool(host='www.mediabank.co.jp', port=443): Max retries exceeded with url: /label.php?id=23&pg=1&stat=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.mediabank.co.jp', port=443) at 0x7f9ede216f60>, 'Connection to www.mediabank.co.jp timed out. (connect timeout=25)'))
+- MediaBank Queen Bee: ConnectTimeout: HTTPSConnectionPool(host='www.mediabank.co.jp', port=443): Max retries exceeded with url: /label.php?id=22&pg=1&stat=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.mediabank.co.jp', port=443) at 0x7fe8203573b0>, 'Connection to www.mediabank.co.jp timed out. (connect timeout=25)'))
+- MediaBank Gold Bear: ConnectTimeout: HTTPSConnectionPool(host='www.mediabank.co.jp', port=443): Max retries exceeded with url: /label.php?id=14&pg=1&stat=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.mediabank.co.jp', port=443) at 0x7fe82037a810>, 'Connection to www.mediabank.co.jp timed out. (connect timeout=25)'))
+- MediaBank White Bear: ConnectTimeout: HTTPSConnectionPool(host='www.mediabank.co.jp', port=443): Max retries exceeded with url: /label.php?id=9&pg=1&stat=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.mediabank.co.jp', port=443) at 0x7fe82037b0e0>, 'Connection to www.mediabank.co.jp timed out. (connect timeout=25)'))
+- MediaBank Hot Bear: ConnectTimeout: HTTPSConnectionPool(host='www.mediabank.co.jp', port=443): Max retries exceeded with url: /label.php?id=8&pg=1&stat=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.mediabank.co.jp', port=443) at 0x7fe8217ede20>, 'Connection to www.mediabank.co.jp timed out. (connect timeout=25)'))
+- MediaBank King Bee: ConnectTimeout: HTTPSConnectionPool(host='www.mediabank.co.jp', port=443): Max retries exceeded with url: /label.php?id=23&pg=1&stat=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.mediabank.co.jp', port=443) at 0x7fe820357140>, 'Connection to www.mediabank.co.jp timed out. (connect timeout=25)'))
 - PoRO: HTTPError: 403 Client Error: Forbidden for url: https://www.poro.cc/
 
-V4 cleanup:
+V5 cleanup:
 - Pink Pineapple metadata items added: 6
-- Error-page entries removed: 13
-- Known placeholder images stripped: 9
-- Final v4 items: 21
+- Error-page entries removed: 8
+- Known placeholder images stripped: 13
+- Final v5 items: 26
