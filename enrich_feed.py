@@ -11,12 +11,11 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-UA = "Mozilla/5.0 (compatible; adult-anime-feed/3.1; +https://github.com/zane6443/adult-anime-feed)"
+UA = "Mozilla/5.0 (compatible; adult-anime-feed/4.0; +https://github.com/zane6443/adult-anime-feed)"
 NOW = datetime.now(timezone.utc)
 YEAR = NOW.year
 META_URL = "https://upcominghentai.com/"
 
-# Known site-level graphics that should never be used as article covers.
 BAD_IMAGE_PARTS = (
     "title_detail.png", "title_detail_sp.png", "logo", "favicon",
     "placeholder", "noimage", "no-image", "loading", "spinner",
@@ -37,22 +36,22 @@ def bad_image(url: str | None) -> bool:
 
 
 def guid_for(title: str, link: str, date: datetime) -> str:
-    return hashlib.sha256(f"{date.date()}|{title}|{link}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"v4|{date.date()}|{title}|{link}".encode("utf-8")).hexdigest()
 
 
 def parse_date(text: str) -> datetime | None:
+    m = re.search(r"([A-Z][a-z]{2,8} \d{1,2}, 20\d{2})", text)
+    if not m:
+        return None
     for fmt in ("%b %d, %Y", "%B %d, %Y"):
-        m = re.search(r"([A-Z][a-z]{2,8} \d{1,2}, 20\d{2})", text)
-        if m:
-            try:
-                return datetime.strptime(m.group(1), fmt).replace(tzinfo=timezone.utc)
-            except ValueError:
-                pass
+        try:
+            return datetime.strptime(m.group(1), fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
     return None
 
 
 def add_pink_pineapple_metadata(channel: ET.Element) -> int:
-    """Fallback metadata source for Pink Pineapple when the official site has no usable release index."""
     try:
         r = requests.get(META_URL, headers={"User-Agent": UA}, timeout=25)
         r.raise_for_status()
@@ -62,11 +61,9 @@ def add_pink_pineapple_metadata(channel: ET.Element) -> int:
     soup = BeautifulSoup(r.text, "html.parser")
     existing_links = {clean(x.text) for x in channel.findall("item/link")}
     added = 0
-
-    # Cards on the release calendar contain date, title, producer and poster together.
-    candidates = soup.select("article, .card, li, div")
     seen = set()
-    for node in candidates:
+
+    for node in soup.select("article, .card, li, div"):
         text = clean(node.get_text(" ", strip=True))
         if "Pink Pineapple" not in text or "OVA" not in text:
             continue
@@ -88,9 +85,9 @@ def add_pink_pineapple_metadata(channel: ET.Element) -> int:
         if img:
             src = img.get("data-src") or img.get("data-lazy-src") or img.get("src")
             if src:
-                image = urljoin(META_URL, src)
-                if bad_image(image):
-                    image = None
+                candidate = urljoin(META_URL, src)
+                if not bad_image(candidate):
+                    image = candidate
 
         item = ET.SubElement(channel, "item")
         ET.SubElement(item, "title").text = f"[Pink Pineapple / metadata] {title}"
@@ -120,45 +117,45 @@ def item_date(item: ET.Element) -> datetime:
 
 
 def cleanup(channel: ET.Element) -> tuple[int, int]:
-    items = list(channel.findall("item"))
     removed_bad = 0
-
-    # Remove entries whose generated title/description still represents an error page.
-    for item in list(items):
+    for item in list(channel.findall("item")):
         blob = clean((item.findtext("title") or "") + " " + (item.findtext("description") or "")).lower()
         if any(x in blob for x in BAD_TEXT):
             channel.remove(item)
             removed_bad += 1
-    items = list(channel.findall("item"))
 
-    images = []
+    items = list(channel.findall("item"))
+    urls = []
     for item in items:
         enc = item.find("enclosure")
         if enc is not None and enc.get("url"):
-            images.append(enc.get("url"))
-    counts = Counter(images)
+            urls.append(enc.get("url"))
+    counts = Counter(urls)
 
-    stripped_images = 0
+    stripped = 0
     for item in items:
         enc = item.find("enclosure")
         url = enc.get("url") if enc is not None else None
         if url and (bad_image(url) or counts[url] >= 3):
-            if enc is not None:
-                item.remove(enc)
+            item.remove(enc)
             desc = item.find("description")
             if desc is not None and desc.text:
-                # Description HTML is XML-escaped text at this point.
                 desc.text = re.sub(r'<p><img src="[^"]+"[^>]*></p>', "", desc.text)
-            stripped_images += 1
+            stripped += 1
 
-    # Keep newest/upcoming first after enrichment.
     items = list(channel.findall("item"))
     items.sort(key=item_date, reverse=True)
     for item in items:
         channel.remove(item)
     for item in items:
+        # New v4 GUIDs force feed readers to import the cleaned cards as fresh entries.
+        old_guid = item.find("guid")
+        if old_guid is not None:
+            title = item.findtext("title") or ""
+            link = item.findtext("link") or ""
+            old_guid.text = guid_for(title, link, item_date(item))
         channel.append(item)
-    return removed_bad, stripped_images
+    return removed_bad, stripped
 
 
 def main():
@@ -168,19 +165,23 @@ def main():
     if channel is None:
         raise RuntimeError("RSS channel missing")
 
+    title = channel.find("title")
+    if title is not None:
+        title.text = f"Adult Anime Release Watch {YEAR} v4"
+
     added_pp = add_pink_pineapple_metadata(channel)
     removed_bad, stripped = cleanup(channel)
     data = ET.tostring(root, encoding="utf-8", xml_declaration=True)
-    for fn in ("feed.xml", "feed-v2.xml", "feed-v3.xml"):
+    for fn in ("feed.xml", "feed-v2.xml", "feed-v3.xml", "feed-v4.xml"):
         with open(fn, "wb") as f:
             f.write(data)
 
-    # Append enrichment diagnostics without destroying generator diagnostics.
     with open("status.txt", "a", encoding="utf-8") as f:
-        f.write("\nEnrichment:\n")
+        f.write("\nV4 cleanup:\n")
         f.write(f"- Pink Pineapple metadata items added: {added_pp}\n")
         f.write(f"- Error-page entries removed: {removed_bad}\n")
         f.write(f"- Placeholder/repeated images stripped: {stripped}\n")
+        f.write(f"- Final v4 items: {len(channel.findall('item'))}\n")
 
 
 if __name__ == "__main__":
