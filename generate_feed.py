@@ -10,7 +10,7 @@ import feedparser, requests
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 
-UA = "Mozilla/5.0 (compatible; adult-anime-feed/2.1; +https://github.com/zane6443/adult-anime-feed)"
+UA = "Mozilla/5.0 (compatible; adult-anime-feed/3.0; +https://github.com/zane6443/adult-anime-feed)"
 TIMEOUT = 25
 NOW = datetime.now(timezone.utc)
 YEAR = NOW.year
@@ -32,14 +32,21 @@ GENERIC = {
     "PoRO": "https://www.poro.cc/",
 }
 BAD = ("500 (server error)", "server error", "internal server error", "404 not found", "page not found", "403 forbidden")
-BAD_IMG = ("logo", "favicon", "icon", "placeholder", "noimage", "no-image", "loading", "spinner", "avatar")
+BAD_IMG = ("logo", "favicon", "icon", "placeholder", "noimage", "no-image", "loading", "spinner", "avatar", "title_detail.png")
 
 
 def clean(s): return re.sub(r"\s+", " ", s or "").strip()
 
 def fetch(url):
     r = requests.get(url, headers={"User-Agent": UA}, timeout=TIMEOUT)
-    r.raise_for_status(); return r
+    r.raise_for_status()
+    # MediaBank serves UTF-8 content with headers that requests can mis-detect,
+    # which caused mojibake such as "å¯..." in previous feed versions.
+    if "mediabank.co.jp" in url:
+        r.encoding = "utf-8"
+    elif not r.encoding or r.encoding.lower() in ("iso-8859-1", "latin-1"):
+        r.encoding = r.apparent_encoding or "utf-8"
+    return r
 
 def tr(s, n=1000):
     s = clean(s)[:n]
@@ -65,7 +72,7 @@ def good_image(u):
 def page_image(url):
     try:
         soup = BeautifulSoup(fetch(url).text, "html.parser")
-        for sel in ("article img", ".entry-content img", ".post-content img", ".article-body img", "main img"):
+        for sel in (".product_detail img", ".product img", "article img", ".entry-content img", ".post-content img", ".article-body img", "main img", "#contents img"):
             for img in soup.select(sel):
                 src = img.get("data-src") or img.get("data-lazy-src") or img.get("src")
                 u = urljoin(url, src) if src else None
@@ -123,16 +130,26 @@ def parse_lune_brand(label,url):
 def mediabank_product(model, source):
     url=f"https://www.mediabank.co.jp/product.php?model={model}"
     soup=BeautifulSoup(fetch(url).text,"html.parser")
-    title=clean((soup.find("h1") or soup.find("h2") or soup.title).get_text(" ",strip=True))
+    # Prefer visible product headings, and strip the site suffix.
+    heading = soup.select_one("h1, h2, .title, .product_title, .product-name")
+    title=clean((heading or soup.title).get_text(" ",strip=True)) if (heading or soup.title) else model
+    title=re.sub(r"\s*[|｜-]\s*Media\s*Bank.*$", "", title, flags=re.I).strip()
     text=clean(soup.get_text(" ",strip=True)); dt=date_from(text)
     if not this_year(dt) or bad_entry(title,text): return None
     img=None
-    for tag in soup.select("main img, .product img, #contents img, img"):
-        src=tag.get("data-src") or tag.get("src")
+    for tag in soup.select(".product_detail img, .product img, #contents img, main img, img"):
+        src=tag.get("data-src") or tag.get("data-lazy-src") or tag.get("src")
         u=urljoin(url,src) if src else None
         if good_image(u): img=u; break
     img=img or page_image(url)
-    return item(f"MediaBank / {source}",title,url,text[:1200],dt,img)
+    # Avoid sending the whole navigation/header text through translation.
+    summary=text
+    for marker in ("作品概要", "STORY", "ストーリー"):
+        pos=summary.find(marker)
+        if pos >= 0:
+            summary=summary[pos:]
+            break
+    return item(f"MediaBank / {source}",title,url,summary[:1400],dt,img)
 
 
 def parse_mediabank(source,label_id):
@@ -141,7 +158,6 @@ def parse_mediabank(source,label_id):
         url=f"https://www.mediabank.co.jp/label.php?id={label_id}&pg={pg}&stat=0"
         soup=BeautifulSoup(fetch(url).text,"html.parser")
         text=soup.get_text(" ",strip=True)
-        # Model numbers are reliable identifiers on MediaBank listing pages.
         for model in re.findall(r"品番[：:]\s*([A-Z]+(?:-B)?-?\d+|[A-Z]{2,5}-[A-Z]?\d+)", text):
             if model in seen: continue
             seen.add(model)
@@ -150,7 +166,6 @@ def parse_mediabank(source,label_id):
                 if x: out.append(x)
             except Exception:
                 pass
-        # Fallback: product.php links when model text format differs.
         for a in soup.find_all("a",href=True):
             m=re.search(r"product\.php\?model=([^&\"']+)",a["href"])
             if not m or m[1] in seen: continue
@@ -177,7 +192,6 @@ def parse_generic(source,url):
 
 
 def key(x):
-    # De-dupe same release even when discovered by both Lune news and label pages.
     base=re.sub(r"\s+","",x["original_title"].lower())
     base=re.sub(r"20\d{2}.*$","",base)
     return hashlib.sha256(f"{x['published'].date()}|{base}".encode()).hexdigest()
@@ -185,14 +199,15 @@ def key(x):
 
 def build(items):
     rss=ET.Element("rss",version="2.0"); ch=ET.SubElement(rss,"channel")
-    ET.SubElement(ch,"title").text=f"Adult Anime Release Watch {YEAR}"
+    ET.SubElement(ch,"title").text=f"Adult Anime Release Watch {YEAR} v3"
     ET.SubElement(ch,"link").text="https://zane6443.github.io/adult-anime-feed/"
-    ET.SubElement(ch,"description").text=f"English adult-anime releases from Jan 1 {YEAR}, automatically updated."
+    ET.SubElement(ch,"description").text=f"English adult-anime releases and announced releases from Jan 1 {YEAR}, automatically updated."
     ET.SubElement(ch,"language").text="en"; ET.SubElement(ch,"lastBuildDate").text=format_datetime(NOW)
     for x in items[:300]:
         e=ET.SubElement(ch,"item"); ET.SubElement(e,"title").text=f"[{x['source']}] {x['title']}"
         ET.SubElement(e,"link").text=x["link"]; ET.SubElement(e,"guid",isPermaLink="false").text=key(x)
-        p=[f"<p><strong>Source:</strong> {html.escape(x['source'])}</p>",f"<p><strong>Release date:</strong> {x['published'].date()}</p>"]
+        status = "Upcoming" if x["published"] > NOW else "Released"
+        p=[f"<p><strong>Source:</strong> {html.escape(x['source'])}</p>",f"<p><strong>Status:</strong> {status}</p>",f"<p><strong>Release date:</strong> {x['published'].date()}</p>"]
         if x.get("image"):
             im=html.escape(x["image"],quote=True); p.append(f'<p><img src="{im}" alt="Preview" style="max-width:100%;height:auto;"></p>')
         if x.get("summary"): p.append(f"<p>{html.escape(x['summary'])}</p>")
@@ -205,9 +220,8 @@ def build(items):
 
 def main():
     all_items=[]; errors=[]
-    for name,func in [("Lune news",parse_lune_news)]:
-        try: all_items+=func()
-        except Exception as e: errors.append(f"{name}: {type(e).__name__}: {e}")
+    try: all_items+=parse_lune_news()
+    except Exception as e: errors.append(f"Lune news: {type(e).__name__}: {e}")
     for label,url in LUNE_BRANDS.items():
         try: all_items+=parse_lune_brand(label,url)
         except Exception as e: errors.append(f"Lune {label}: {type(e).__name__}: {e}")
@@ -220,17 +234,15 @@ def main():
 
     uniq={}
     for x in all_items:
-        k=key(x)
-        # Prefer the version with an image and richer text.
-        old=uniq.get(k)
+        k=key(x); old=uniq.get(k)
         if old is None or (not old.get("image") and x.get("image")) or len(x.get("summary",''))>len(old.get("summary",'')): uniq[k]=x
     items=sorted(uniq.values(),key=lambda x:(x["published"],x["title"]),reverse=True)
     data=build(items)
-    for fn in ("feed.xml","feed-v2.xml"):
+    for fn in ("feed.xml","feed-v2.xml","feed-v3.xml"):
         open(fn,"wb").write(data)
     counts=Counter(x["source"] for x in items)
     with open("status.txt","w",encoding="utf-8") as f:
-        f.write(f"Updated: {NOW.isoformat()}\nYear: {YEAR}\nItems: {len(items)}\nItems with images: {sum(bool(x.get('image')) for x in items)}\n\nItems by source:\n")
+        f.write(f"Updated: {NOW.isoformat()}\nYear: {YEAR}\nItems: {len(items)}\nItems with images: {sum(bool(x.get('image')) for x in items)}\nUpcoming: {sum(x['published'] > NOW for x in items)}\n\nItems by source:\n")
         for s,c in sorted(counts.items()): f.write(f"- {s}: {c}\n")
         if errors:
             f.write("\nSource errors:\n")
