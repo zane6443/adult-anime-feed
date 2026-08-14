@@ -1,7 +1,11 @@
-Updated: 2026-08-14T22:48:21.548104+00:00
-Items: 10
-Items with unique/useful images: 10
-Repeated default images removed: 0
+Updated: 2026-08-14T22:54:58.781785+00:00
+Backfill start: 2026-01-01
+Items: 12
+Items with useful images: 0
+Repeated default images removed: 1
+
+Items by source:
+- Lune Pictures / アニメ: 12
 
 Source errors:
 - PoRO: HTTPError: 403 Client Error: Forbidden for url: https://www.poro.cc/
