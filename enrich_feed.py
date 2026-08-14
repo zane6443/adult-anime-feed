@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import re
 import xml.etree.ElementTree as ET
-from collections import Counter
 from datetime import datetime, timezone
 from email.utils import format_datetime, parsedate_to_datetime
 from urllib.parse import urljoin
@@ -11,11 +10,12 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-UA = "Mozilla/5.0 (compatible; adult-anime-feed/4.0; +https://github.com/zane6443/adult-anime-feed)"
+UA = "Mozilla/5.0 (compatible; adult-anime-feed/4.1; +https://github.com/zane6443/adult-anime-feed)"
 NOW = datetime.now(timezone.utc)
 YEAR = NOW.year
 META_URL = "https://upcominghentai.com/"
 
+# Only explicit known site graphics are removed. Repeated real covers are allowed.
 BAD_IMAGE_PARTS = (
     "title_detail.png", "title_detail_sp.png", "logo", "favicon",
     "placeholder", "noimage", "no-image", "loading", "spinner",
@@ -124,19 +124,11 @@ def cleanup(channel: ET.Element) -> tuple[int, int]:
             channel.remove(item)
             removed_bad += 1
 
-    items = list(channel.findall("item"))
-    urls = []
-    for item in items:
-        enc = item.find("enclosure")
-        if enc is not None and enc.get("url"):
-            urls.append(enc.get("url"))
-    counts = Counter(urls)
-
     stripped = 0
-    for item in items:
+    for item in list(channel.findall("item")):
         enc = item.find("enclosure")
         url = enc.get("url") if enc is not None else None
-        if url and (bad_image(url) or counts[url] >= 3):
+        if url and bad_image(url):
             item.remove(enc)
             desc = item.find("description")
             if desc is not None and desc.text:
@@ -148,7 +140,6 @@ def cleanup(channel: ET.Element) -> tuple[int, int]:
     for item in items:
         channel.remove(item)
     for item in items:
-        # New v4 GUIDs force feed readers to import the cleaned cards as fresh entries.
         old_guid = item.find("guid")
         if old_guid is not None:
             title = item.findtext("title") or ""
@@ -180,7 +171,7 @@ def main():
         f.write("\nV4 cleanup:\n")
         f.write(f"- Pink Pineapple metadata items added: {added_pp}\n")
         f.write(f"- Error-page entries removed: {removed_bad}\n")
-        f.write(f"- Placeholder/repeated images stripped: {stripped}\n")
+        f.write(f"- Known placeholder images stripped: {stripped}\n")
         f.write(f"- Final v4 items: {len(channel.findall('item'))}\n")
 
 
