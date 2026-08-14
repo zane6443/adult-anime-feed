@@ -1,4 +1,4 @@
-Updated: 2026-08-14T23:18:53.229234+00:00
+Updated: 2026-08-14T23:26:59.087308+00:00
 Year: 2026
 Items: 44
 Items with images: 44
@@ -14,7 +14,8 @@ Items by source:
 Source errors:
 - PoRO: HTTPError: 403 Client Error: Forbidden for url: https://www.poro.cc/
 
-Enrichment:
+V4 cleanup:
 - Pink Pineapple metadata items added: 6
-- Error-page entries removed: 10
-- Placeholder/repeated images stripped: 24
+- Error-page entries removed: 7
+- Placeholder/repeated images stripped: 28
+- Final v4 items: 43
