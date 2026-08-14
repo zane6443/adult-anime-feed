@@ -4,6 +4,7 @@ import html
 import hashlib
 import re
 import xml.etree.ElementTree as ET
+from collections import Counter
 from datetime import datetime, timezone
 from email.utils import format_datetime
 from urllib.parse import urljoin
@@ -13,7 +14,7 @@ import requests
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 
-UA = "Mozilla/5.0 (compatible; adult-anime-feed/1.1; +https://github.com/zane6443/adult-anime-feed)"
+UA = "Mozilla/5.0 (compatible; adult-anime-feed/1.2; +https://github.com/zane6443/adult-anime-feed)"
 TIMEOUT = 25
 translator = GoogleTranslator(source="auto", target="en")
 
@@ -23,11 +24,6 @@ SOURCES = [
         "kind": "rss",
         "url": "https://www.lune-soft.jp/feed",
         "keywords": ["OVA", "アニメ", "発売", "新作", "ばにぃ", "Bunny"],
-    },
-    {
-        "name": "Lune Soft / Bunny Walker OVA",
-        "kind": "html",
-        "url": "https://www.lune-soft.jp/ova/brand_ova/bunnywalker",
     },
     {
         "name": "Pink Pineapple",
@@ -40,6 +36,15 @@ SOURCES = [
         "url": "https://www.poro.cc/",
     },
 ]
+
+BAD_IMAGE_HINTS = (
+    "logo", "favicon", "icon", "noimage", "no-image", "placeholder",
+    "loading", "spinner", "avatar", "common/", "header/", "footer/",
+)
+BAD_ENTRY_HINTS = (
+    "500 (server error)", "server error", "internal server error",
+    "404 not found", "page not found", "403 forbidden",
+)
 
 
 def clean_text(s: str) -> str:
@@ -63,10 +68,36 @@ def translate_en(text: str, limit: int = 1200) -> str:
         return text
 
 
+def good_image(url: str | None) -> bool:
+    if not url:
+        return False
+    low = url.lower()
+    if any(h in low for h in BAD_IMAGE_HINTS):
+        return False
+    return low.startswith("http://") or low.startswith("https://")
+
+
 def extract_image_from_html(url: str) -> str | None:
+    """Prefer an image inside the actual article; use OG/Twitter image only as fallback."""
     try:
         r = fetch(url)
         soup = BeautifulSoup(r.text, "html.parser")
+
+        selectors = [
+            "article img[src]",
+            ".entry-content img[src]",
+            ".post-content img[src]",
+            ".article-body img[src]",
+            ".news-body img[src]",
+            "main img[src]",
+        ]
+        for selector in selectors:
+            for img in soup.select(selector):
+                src = img.get("data-src") or img.get("data-lazy-src") or img.get("src")
+                candidate = urljoin(url, src) if src else None
+                if good_image(candidate):
+                    return candidate
+
         for attrs in [
             {"property": "og:image"},
             {"name": "twitter:image"},
@@ -74,10 +105,9 @@ def extract_image_from_html(url: str) -> str | None:
         ]:
             tag = soup.find("meta", attrs=attrs)
             if tag and tag.get("content"):
-                return urljoin(url, tag["content"])
-        img = soup.find("img", src=True)
-        if img:
-            return urljoin(url, img.get("src"))
+                candidate = urljoin(url, tag["content"])
+                if good_image(candidate):
+                    return candidate
     except Exception:
         pass
     return None
@@ -87,21 +117,26 @@ def rss_image(entry) -> str | None:
     media = getattr(entry, "media_content", None)
     if media:
         for m in media:
-            if m.get("url"):
+            if good_image(m.get("url")):
                 return m["url"]
     thumbs = getattr(entry, "media_thumbnail", None)
     if thumbs:
         for m in thumbs:
-            if m.get("url"):
+            if good_image(m.get("url")):
                 return m["url"]
     enc = getattr(entry, "enclosures", None)
     if enc:
         for e in enc:
             href = e.get("href")
             typ = (e.get("type") or "").lower()
-            if href and typ.startswith("image/"):
+            if href and typ.startswith("image/") and good_image(href):
                 return href
     return None
+
+
+def bad_entry(title: str, summary: str = "") -> bool:
+    blob = f"{title} {summary}".lower()
+    return any(h in blob for h in BAD_ENTRY_HINTS)
 
 
 def parse_rss(source):
@@ -109,9 +144,11 @@ def parse_rss(source):
     feed = feedparser.parse(r.content)
     items = []
     kws = [k.lower() for k in source.get("keywords", [])]
-    for e in feed.entries[:40]:
+    for e in feed.entries[:50]:
         original_title = clean_text(getattr(e, "title", ""))
         original_summary = clean_text(BeautifulSoup(getattr(e, "summary", ""), "html.parser").get_text(" "))
+        if bad_entry(original_title, original_summary):
+            continue
         blob = f"{original_title} {original_summary}".lower()
         if kws and not any(k in blob for k in kws):
             continue
@@ -151,6 +188,8 @@ def parse_html(source):
         if len(original_title) < 4:
             continue
         original_text = clean_text(node.get_text(" ", strip=True))
+        if bad_entry(original_title, original_text):
+            continue
         href = urljoin(source["url"], a.get("href"))
         key = (original_title, href)
         if key in seen:
@@ -159,13 +198,18 @@ def parse_html(source):
 
         blob = f"{original_title} {original_text}".lower()
         likely = any(k in blob for k in ["発売", "release", "ova", "dvd", "bd", "新作", "作品", "anime", "アニメ"])
-        if source["name"] == "Lune Soft / Bunny Walker OVA":
-            likely = True
         if not likely:
             continue
 
-        img = node.find("img", src=True)
-        image = urljoin(source["url"], img.get("src")) if img else extract_image_from_html(href)
+        image = None
+        for img in node.select("img[src]"):
+            src = img.get("data-src") or img.get("data-lazy-src") or img.get("src")
+            candidate = urljoin(source["url"], src) if src else None
+            if good_image(candidate):
+                image = candidate
+                break
+        if not image:
+            image = extract_image_from_html(href)
 
         items.append({
             "title": translate_en(original_title, 500),
@@ -185,6 +229,16 @@ def parse_html(source):
 def make_guid(item):
     raw = f"{item['source']}|{item['link']}|{item['original_title']}".encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
+
+
+def clean_repeated_images(items):
+    """Remove site-wide default graphics that appear as the image for many unrelated posts."""
+    counts = Counter(i.get("image") for i in items if i.get("image"))
+    repeated = {url for url, count in counts.items() if count >= 3}
+    for item in items:
+        if item.get("image") in repeated:
+            item["image"] = None
+    return repeated
 
 
 def build_feed(items):
@@ -211,8 +265,7 @@ def build_feed(items):
             parts.append(f"<p>{html.escape(item['summary'])}</p>")
         if item.get("original_title") and item["original_title"] != item["title"]:
             parts.append(f"<p><strong>Original title:</strong> {html.escape(item['original_title'])}</p>")
-        desc = "".join(parts)
-        ET.SubElement(el, "description").text = desc
+        ET.SubElement(el, "description").text = "".join(parts)
 
         if item.get("image"):
             ET.SubElement(el, "enclosure", url=item["image"], type="image/jpeg")
@@ -237,8 +290,10 @@ def main():
 
     uniq = {}
     for item in all_items:
-        uniq[make_guid(item)] = item
+        if not bad_entry(item.get("title", ""), item.get("summary", "")):
+            uniq[make_guid(item)] = item
     items = list(uniq.values())
+    repeated_images = clean_repeated_images(items)
     items.sort(key=lambda x: (x["published"] is not None, x["published"] or datetime.min.replace(tzinfo=timezone.utc), x["title"]), reverse=True)
 
     with open("feed.xml", "wb") as f:
@@ -248,7 +303,8 @@ def main():
         f.write(f"Updated: {datetime.now(timezone.utc).isoformat()}\n")
         f.write(f"Items: {len(items)}\n")
         with_images = sum(1 for i in items if i.get("image"))
-        f.write(f"Items with images: {with_images}\n")
+        f.write(f"Items with unique/useful images: {with_images}\n")
+        f.write(f"Repeated default images removed: {len(repeated_images)}\n")
         if errors:
             f.write("\nSource errors:\n")
             for err in errors:
