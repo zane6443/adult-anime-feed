@@ -1,7 +1,8 @@
-Updated: 2026-08-14T23:01:01.678998+00:00
+Updated: 2026-08-14T23:09:01.076884+00:00
 Year: 2026
 Items: 44
 Items with images: 44
+Upcoming: 9
 
 Items by source:
 - Lune Pictures / Antechinus: 6
@@ -11,4 +12,4 @@ Items by source:
 - MediaBank / Queen Bee: 4
 
 Source errors:
-- PoRO: HTTPError: 403 Client Error: Forbidden for url: https://www.poro.cc/
+- PoRO: ConnectionError: HTTPSConnectionPool(host='www.poro.cc', port=443): Max retries exceeded with url: / (Caused by NewConnectionError("HTTPSConnection(host='www.poro.cc', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable"))
