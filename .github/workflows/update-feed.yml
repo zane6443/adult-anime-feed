@@ -23,16 +23,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Generate feed
+      - name: Generate stable release feed
         run: python generate_feed.py
-
-      - name: Enrich and clean feed
-        run: python enrich_feed.py
 
       - name: Commit updated feed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add feed.xml feed-v2.xml feed-v3.xml feed-v4.xml feed-v5.xml status.txt
-          git diff --cached --quiet || git commit -m "Update feed"
+          git add release-feed.xml feed.xml status.txt
+          git diff --cached --quiet || git commit -m "Update stable release feed"
           git push
