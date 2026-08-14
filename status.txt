@@ -1,4 +1,4 @@
-Updated: 2026-08-14T23:09:01.076884+00:00
+Updated: 2026-08-14T23:18:53.229234+00:00
 Year: 2026
 Items: 44
 Items with images: 44
@@ -12,4 +12,9 @@ Items by source:
 - MediaBank / Queen Bee: 4
 
 Source errors:
-- PoRO: ConnectionError: HTTPSConnectionPool(host='www.poro.cc', port=443): Max retries exceeded with url: / (Caused by NewConnectionError("HTTPSConnection(host='www.poro.cc', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable"))
+- PoRO: HTTPError: 403 Client Error: Forbidden for url: https://www.poro.cc/
+
+Enrichment:
+- Pink Pineapple metadata items added: 6
+- Error-page entries removed: 10
+- Placeholder/repeated images stripped: 24
