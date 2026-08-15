@@ -1,11 +1,7 @@
-Updated: 2026-08-14T23:47:17.372201+00:00
-Year: 2026
-Final stable items: 42
-Items with real images: 42
-Items without images: 0
-Upcoming: 13
+Updated: 2026-08-15T03:07:57.560800+00:00
+Items: 7
+Items with unique/useful images: 7
+Repeated default images removed: 0
 
-Items by source:
-- Lune Pictures / Antechinus: 6
-- Lune Pictures / Bunny Walker: 18
-- Pink Pineapple / metadata: 18
+Source errors:
+- PoRO: HTTPError: 403 Client Error: Forbidden for url: https://www.poro.cc/
