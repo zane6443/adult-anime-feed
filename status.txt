@@ -1,7 +1,7 @@
-Updated: 2026-08-16T03:29:27.629051+00:00
+Updated: 2026-08-16T07:48:48.421150+00:00
 Items: 10
 Items with unique/useful images: 10
 Repeated default images removed: 0
 
 Source errors:
-- PoRO: ConnectionError: HTTPSConnectionPool(host='www.poro.cc', port=443): Max retries exceeded with url: / (Caused by NewConnectionError("HTTPSConnection(host='www.poro.cc', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable"))
+- PoRO: HTTPError: 403 Client Error: Forbidden for url: https://www.poro.cc/
