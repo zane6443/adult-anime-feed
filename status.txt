@@ -1,6 +1,6 @@
-Updated: 2026-08-23T07:51:41.217980+00:00
-Items: 10
-Items with unique/useful images: 10
+Updated: 2026-08-23T13:48:28.012120+00:00
+Items: 6
+Items with unique/useful images: 6
 Repeated default images removed: 0
 
 Source errors:
