@@ -1,7 +1,8 @@
-Updated: 2026-10-21T11:42:45.705915+00:00
+Updated: 2026-10-21T17:08:01.770683+00:00
 Items: 10
 Items with unique/useful images: 10
 Repeated default images removed: 0
 
 Source errors:
+- Pink Pineapple: HTTPError: 503 Server Error: Service Unavailable for url: https://www.pinkpineapple.co.jp/
 - PoRO: HTTPError: 403 Client Error: Forbidden for url: https://www.poro.cc/
